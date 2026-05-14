@@ -37,3 +37,12 @@ Permite subir los 3 archivos, configurar semanas objetivo y tiempo de reposició
 ## Modo administrador
 
 Por ahora permite descargar el maestro actual. En una próxima versión se agregará carga segura de maestro.
+
+
+## Cambios v2
+
+- Estados de carga compactos.
+- Explicación breve de Semanas objetivo, Tiempo de reposición y Días analizados.
+- Resumen especial de grupos detectados en Power BI.
+- Advertencia sobre desplegar el signo `+` en Power BI antes de exportar.
+- Vista previa del pedido y productos sin clasificar dentro de desplegables.

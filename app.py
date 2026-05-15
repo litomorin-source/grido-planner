@@ -17,16 +17,18 @@ st.set_page_config(
     layout="wide"
 )
 
+APP_VERSION = "v0.4-admin-maestro"
+
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_MAESTRO = APP_DIR / "maestro" / "Maestro_Productos_Grido.xlsx"
 
 st.title("🍦 GridoPlanner")
-st.caption("Herramienta experimental para generar sugerencias de pedido a partir de los exports de Grido.")
+st.caption(f"Herramienta experimental para generar sugerencias de pedido a partir de los exports de Grido. Versión {APP_VERSION}")
 
 modo = st.sidebar.radio("Modo", ["Usuario", "Administrador"])
 
 st.sidebar.markdown("---")
-st.sidebar.info("Versión de prueba. Subí cada archivo en su campo correspondiente.")
+st.sidebar.info(f"Versión {APP_VERSION}. Subí cada archivo en su campo correspondiente.")
 
 
 def detectar_grupos_powerbi(file_path):
@@ -70,6 +72,91 @@ def detectar_grupos_powerbi(file_path):
         return [], f"No pude leer los grupos del Power BI. Error: {e}"
 
 
+
+def _norm_col(c):
+    return str(c).strip().lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+
+
+def validar_maestro(maestro_path):
+    """
+    Valida que el maestro subido tenga la estructura mínima esperada.
+    No valida que cada producto sea correcto, solo que el archivo sea usable.
+    """
+    errores = []
+    advertencias = []
+
+    try:
+        xls = pd.ExcelFile(maestro_path)
+    except Exception as e:
+        return False, [f"No pude abrir el Excel del maestro. Error: {e}"], []
+
+    hojas_requeridas = ["Productos", "Aliases", "Exclusiones", "Configuración"]
+    hojas = set(xls.sheet_names)
+
+    for hoja in hojas_requeridas:
+        if hoja not in hojas:
+            errores.append(f"Falta la hoja obligatoria: {hoja}")
+
+    if errores:
+        return False, errores, advertencias
+
+    try:
+        productos = pd.read_excel(maestro_path, sheet_name="Productos")
+        cols = {_norm_col(c): c for c in productos.columns}
+
+        requeridas_productos = [
+            "producto base",
+            "codigo compra",
+            "producto compra",
+            "compra minima",
+        ]
+
+        for req in requeridas_productos:
+            if req not in cols:
+                errores.append(f"Hoja Productos: falta columna '{req}'.")
+
+        if "producto base" in cols:
+            vacios = productos[cols["producto base"]].isna().sum()
+            if vacios > 0:
+                advertencias.append(f"Hoja Productos: hay {vacios} filas sin Producto Base.")
+
+        if "compra minima" in cols:
+            compra_min = pd.to_numeric(productos[cols["compra minima"]], errors="coerce")
+            invalidos = compra_min.isna().sum()
+            if invalidos > 0:
+                advertencias.append(f"Hoja Productos: hay {invalidos} compras mínimas vacías o no numéricas.")
+
+    except Exception as e:
+        errores.append(f"No pude validar la hoja Productos. Error: {e}")
+
+    try:
+        aliases = pd.read_excel(maestro_path, sheet_name="Aliases")
+        cols = {_norm_col(c): c for c in aliases.columns}
+        if not ("alias detectado" in cols or "alias" in cols or "nombre original" in cols):
+            errores.append("Hoja Aliases: falta columna de alias.")
+        if "producto base" not in cols:
+            errores.append("Hoja Aliases: falta columna 'Producto Base'.")
+    except Exception as e:
+        errores.append(f"No pude validar la hoja Aliases. Error: {e}")
+
+    try:
+        exclusiones = pd.read_excel(maestro_path, sheet_name="Exclusiones")
+        if exclusiones.shape[1] < 1:
+            errores.append("Hoja Exclusiones: debe tener al menos una columna con productos a excluir.")
+    except Exception as e:
+        errores.append(f"No pude validar la hoja Exclusiones. Error: {e}")
+
+    try:
+        config = pd.read_excel(maestro_path, sheet_name="Configuración")
+        cols = {_norm_col(c): c for c in config.columns}
+        if "parametro" not in cols or "valor" not in cols:
+            errores.append("Hoja Configuración: debe tener columnas Parámetro y Valor.")
+    except Exception as e:
+        errores.append(f"No pude validar la hoja Configuración. Error: {e}")
+
+    return len(errores) == 0, errores, advertencias
+
+
 def estado_archivo(label, ok, msg, detalles=None, warning=None):
     if ok:
         st.success(f"✅ {label} OK")
@@ -91,19 +178,72 @@ def estado_archivo(label, ok, msg, detalles=None, warning=None):
 
 if modo == "Administrador":
     st.header("Administrador")
-    st.write("Desde acá podés descargar el maestro actual. En esta primera versión, para actualizarlo hay que reemplazar el archivo en GitHub o en la carpeta `maestro`.")
+    st.caption(f"Versión {APP_VERSION}")
+
+    st.subheader("Maestro de productos")
 
     if DEFAULT_MAESTRO.exists():
+        st.success("Maestro actual encontrado.")
         st.download_button(
             "Descargar Maestro actual",
             data=DEFAULT_MAESTRO.read_bytes(),
             file_name="Maestro_Productos_Grido.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
         )
     else:
         st.error("No se encontró el maestro en la carpeta maestro/.")
 
-    st.warning("La carga web de un nuevo maestro la vamos a agregar en una próxima versión para evitar sobrescribir por error.")
+    st.markdown("---")
+    st.subheader("Subir nuevo maestro")
+
+    st.info(
+        "Subí un archivo Excel con las hojas obligatorias: Productos, Aliases, Exclusiones y Configuración. "
+        "La app lo valida antes de permitir reemplazarlo."
+    )
+
+    nuevo_maestro = st.file_uploader(
+        "Nuevo Maestro_Productos_Grido.xlsx",
+        type=["xlsx"],
+        help="Debe tener las hojas Productos, Aliases, Exclusiones y Configuración."
+    )
+
+    if nuevo_maestro:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir) / "Maestro_Productos_Grido.xlsx"
+            tmp_path.write_bytes(nuevo_maestro.getvalue())
+
+            ok, errores, advertencias = validar_maestro(tmp_path)
+
+            if ok:
+                st.success("✅ Maestro validado correctamente.")
+
+                if advertencias:
+                    with st.expander("Ver advertencias", expanded=False):
+                        for adv in advertencias:
+                            st.warning(adv)
+
+                st.warning(
+                    "Atención: en Streamlit Cloud, los archivos subidos desde la app pueden perderse si la app se reinicia. "
+                    "Para una prueba rápida sirve, pero para dejarlo permanente conviene subir el maestro actualizado a GitHub."
+                )
+
+                if st.button("Reemplazar maestro en esta sesión", type="primary", use_container_width=True):
+                    DEFAULT_MAESTRO.parent.mkdir(exist_ok=True)
+                    DEFAULT_MAESTRO.write_bytes(tmp_path.read_bytes())
+                    st.success("Maestro reemplazado en esta sesión. Ya podés volver al modo Usuario y generar pedidos.")
+                    st.info("Para hacerlo permanente, subí este mismo maestro a GitHub en la carpeta maestro.")
+
+            else:
+                st.error("❌ El maestro no pasó la validación.")
+                for err in errores:
+                    st.error(err)
+
+                if advertencias:
+                    with st.expander("Ver advertencias", expanded=False):
+                        for adv in advertencias:
+                            st.warning(adv)
+
     st.stop()
 
 

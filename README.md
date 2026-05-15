@@ -57,3 +57,13 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Se agrega hoja `Posibles faltantes` al Excel.
 - La app muestra contador y alerta visual de posibles faltantes.
 - Esta regla no modifica automáticamente la compra sugerida.
+
+
+## Cambios v4
+
+- Versión visible en la app.
+- Modo Administrador mejorado.
+- Descarga del maestro actual.
+- Carga de nuevo maestro desde la web.
+- Validación del maestro antes de reemplazarlo.
+- Advertencia: en Streamlit Cloud el reemplazo desde la app es temporal si la app se reinicia; para hacerlo permanente hay que subir el maestro a GitHub.

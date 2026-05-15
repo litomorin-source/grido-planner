@@ -67,3 +67,11 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Carga de nuevo maestro desde la web.
 - Validación del maestro antes de reemplazarlo.
 - Advertencia: en Streamlit Cloud el reemplazo desde la app es temporal si la app se reinicia; para hacerlo permanente hay que subir el maestro a GitHub.
+
+
+## Cambios v5
+
+- Se incorpora el maestro validado por Gabriel como maestro oficial incluido.
+- Se agrega PIN simple para habilitar la carga/reemplazo del maestro desde modo administrador.
+- PIN inicial: `2468`.
+- El PIN se puede cambiar editando `ADMIN_PIN` en `app.py`.

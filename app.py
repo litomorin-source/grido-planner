@@ -17,7 +17,8 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "v0.4-admin-maestro"
+APP_VERSION = "v0.5-admin-pin"
+ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_MAESTRO = APP_DIR / "maestro" / "Maestro_Productos_Grido.xlsx"
@@ -198,51 +199,58 @@ if modo == "Administrador":
     st.subheader("Subir nuevo maestro")
 
     st.info(
-        "Subí un archivo Excel con las hojas obligatorias: Productos, Aliases, Exclusiones y Configuración. "
-        "La app lo valida antes de permitir reemplazarlo."
+        "Para modificar el maestro tenés que ingresar el PIN de administrador. "
+        "La app valida el archivo antes de permitir reemplazarlo."
     )
 
-    nuevo_maestro = st.file_uploader(
-        "Nuevo Maestro_Productos_Grido.xlsx",
-        type=["xlsx"],
-        help="Debe tener las hojas Productos, Aliases, Exclusiones y Configuración."
-    )
+    pin = st.text_input("PIN de administrador", type="password")
 
-    if nuevo_maestro:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir) / "Maestro_Productos_Grido.xlsx"
-            tmp_path.write_bytes(nuevo_maestro.getvalue())
+    if pin != ADMIN_PIN:
+        st.warning("Ingresá el PIN correcto para habilitar la carga de maestro.")
+    else:
+        st.success("PIN correcto. Carga de maestro habilitada.")
 
-            ok, errores, advertencias = validar_maestro(tmp_path)
+        nuevo_maestro = st.file_uploader(
+            "Nuevo Maestro_Productos_Grido.xlsx",
+            type=["xlsx"],
+            help="Debe tener las hojas Productos, Aliases, Exclusiones y Configuración."
+        )
 
-            if ok:
-                st.success("✅ Maestro validado correctamente.")
+        if nuevo_maestro:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir) / "Maestro_Productos_Grido.xlsx"
+                tmp_path.write_bytes(nuevo_maestro.getvalue())
 
-                if advertencias:
-                    with st.expander("Ver advertencias", expanded=False):
-                        for adv in advertencias:
-                            st.warning(adv)
+                ok, errores, advertencias = validar_maestro(tmp_path)
 
-                st.warning(
-                    "Atención: en Streamlit Cloud, los archivos subidos desde la app pueden perderse si la app se reinicia. "
-                    "Para una prueba rápida sirve, pero para dejarlo permanente conviene subir el maestro actualizado a GitHub."
-                )
+                if ok:
+                    st.success("✅ Maestro validado correctamente.")
 
-                if st.button("Reemplazar maestro en esta sesión", type="primary", use_container_width=True):
-                    DEFAULT_MAESTRO.parent.mkdir(exist_ok=True)
-                    DEFAULT_MAESTRO.write_bytes(tmp_path.read_bytes())
-                    st.success("Maestro reemplazado en esta sesión. Ya podés volver al modo Usuario y generar pedidos.")
-                    st.info("Para hacerlo permanente, subí este mismo maestro a GitHub en la carpeta maestro.")
+                    if advertencias:
+                        with st.expander("Ver advertencias", expanded=False):
+                            for adv in advertencias:
+                                st.warning(adv)
 
-            else:
-                st.error("❌ El maestro no pasó la validación.")
-                for err in errores:
-                    st.error(err)
+                    st.warning(
+                        "Atención: en Streamlit Cloud, los archivos subidos desde la app pueden perderse si la app se reinicia. "
+                        "Para una prueba rápida sirve, pero para dejarlo permanente conviene subir el maestro actualizado a GitHub."
+                    )
 
-                if advertencias:
-                    with st.expander("Ver advertencias", expanded=False):
-                        for adv in advertencias:
-                            st.warning(adv)
+                    if st.button("Reemplazar maestro en esta sesión", type="primary", use_container_width=True):
+                        DEFAULT_MAESTRO.parent.mkdir(exist_ok=True)
+                        DEFAULT_MAESTRO.write_bytes(tmp_path.read_bytes())
+                        st.success("Maestro reemplazado en esta sesión. Ya podés volver al modo Usuario y generar pedidos.")
+                        st.info("Para hacerlo permanente, subí este mismo maestro a GitHub en la carpeta maestro.")
+
+                else:
+                    st.error("❌ El maestro no pasó la validación.")
+                    for err in errores:
+                        st.error(err)
+
+                    if advertencias:
+                        with st.expander("Ver advertencias", expanded=False):
+                            for adv in advertencias:
+                                st.warning(adv)
 
     st.stop()
 

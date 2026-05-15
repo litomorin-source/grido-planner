@@ -46,3 +46,14 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Resumen especial de grupos detectados en Power BI.
 - Advertencia sobre desplegar el signo `+` en Power BI antes de exportar.
 - Vista previa del pedido y productos sin clasificar dentro de desplegables.
+
+
+## Cambios v3
+
+- Nueva detección de `Posibles faltantes`.
+- Regla: ventas = 0 y stock bajo.
+- Helado a granel: stock bajo menor a 1.
+- Otros productos: stock bajo menor a 5.
+- Se agrega hoja `Posibles faltantes` al Excel.
+- La app muestra contador y alerta visual de posibles faltantes.
+- Esta regla no modifica automáticamente la compra sugerida.

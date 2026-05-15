@@ -438,6 +438,37 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     final["Reposición necesaria"] = np.maximum(0, (final["Venta Semanal"] * objetivo_total) - final["Stock"])
 
     final = final.merge(productos_validos, on="Producto Base", how="left")
+
+    # Posibles faltantes:
+    # En Grido, ventas = 0 rara vez significa demanda cero. Si además el stock es bajo,
+    # lo marcamos para revisión manual sin modificar automáticamente la compra sugerida.
+    def es_helado_granel(row):
+        grupo = normalize(row.get("Grupo", ""))
+        subrubro = normalize(row.get("SubRubro", ""))
+        tipo = normalize(row.get("Tipo Producto", ""))
+        producto = normalize(row.get("Producto Base", ""))
+        return (
+            "helado" in grupo
+            or "sabores" in subrubro
+            or "sabor" in tipo
+            or "7 800" in producto
+        )
+
+    def observacion_faltante(row):
+        ventas = safe_num(row.get("Ventas período", 0), 0)
+        stock_actual = safe_num(row.get("Stock", 0), 0)
+        if ventas != 0:
+            return ""
+
+        if es_helado_granel(row) and stock_actual < 1:
+            return "Posible faltante: sin ventas y stock bajo"
+
+        if (not es_helado_granel(row)) and stock_actual < 5:
+            return "Posible faltante: sin ventas y stock bajo"
+
+        return ""
+
+    final["Observación"] = final.apply(observacion_faltante, axis=1)
     final["Compra Mínima"] = pd.to_numeric(final["Compra Mínima"], errors="coerce").fillna(1)
     final["Packs a Comprar"] = final.apply(lambda r: ceil_to_int(r["Reposición necesaria"] / r["Compra Mínima"]) if r["Reposición necesaria"] > 0 else 0, axis=1)
     final["Unidades Finales"] = final["Packs a Comprar"] * final["Compra Mínima"]
@@ -454,7 +485,7 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     pedido = final[[
         "Grupo", "Producto Base", "Stock", "Ventas período", "Venta Semanal", "Semanas Stock",
         "Reposición necesaria", "Compra Mínima", "Packs a Comprar", "Unidades Finales",
-        "Código Compra", "Producto Compra", "Productos agrupados"
+        "Código Compra", "Producto Compra", "Observación", "Productos agrupados"
     ]].copy()
 
     pedido = pedido.rename(columns={
@@ -466,6 +497,10 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         pedido[col] = pd.to_numeric(pedido[col], errors="coerce").round(2)
 
     pedido = pedido.sort_values(["Grupo", "Producto"])
+
+    posibles_faltantes = pedido[
+        pedido["Observación"].astype(str).str.contains("Posible faltante", na=False)
+    ].copy()
 
     explicacion = pd.DataFrame({
         "Explicación": [
@@ -495,11 +530,18 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
             "PRODUCTOS NUEVOS",
             "Si aparece un producto no encontrado en el maestro, se informa en la hoja Sin clasificar.",
             "No se debería comprar automáticamente un producto sin clasificar hasta cargarlo en el maestro.",
+            "",
+            "POSIBLES FALTANTES",
+            "Si un producto no tuvo ventas y además tiene stock bajo, se marca como posible faltante.",
+            "Esta alerta no modifica automáticamente la compra sugerida. Sirve para revisión manual.",
+            "Para helado a granel se considera stock bajo si es menor a 1.",
+            "Para el resto de productos se considera stock bajo si es menor a 5.",
         ]
     })
 
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
         pedido.to_excel(writer, index=False, sheet_name="Pedido Final")
+        posibles_faltantes.to_excel(writer, index=False, sheet_name="Posibles faltantes")
         sin_clasificar.to_excel(writer, index=False, sheet_name="Sin clasificar")
         explicacion.to_excel(writer, index=False, sheet_name="Explicación")
 
@@ -507,6 +549,7 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
 
     return {
         "pedido": pedido,
+        "posibles_faltantes": posibles_faltantes,
         "sin_clasificar": sin_clasificar,
         "output_file": output_file,
         "config": config,

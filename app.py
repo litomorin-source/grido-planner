@@ -255,13 +255,21 @@ with tempfile.TemporaryDirectory() as tmp_dir:
 
             pedido = result["pedido"]
             sin_clasificar = result["sin_clasificar"]
+            posibles_faltantes = result.get("posibles_faltantes")
 
             st.success("Pedido generado correctamente.")
 
-            m1, m2, m3 = st.columns(3)
+            m1, m2, m3, m4 = st.columns(4)
             m1.metric("Productos en pedido", len(pedido))
             m2.metric("Productos sin clasificar", len(sin_clasificar))
-            m3.metric("Packs totales sugeridos", int(pedido["Packs a Comprar"].fillna(0).sum()))
+            m3.metric("Posibles faltantes", len(posibles_faltantes) if posibles_faltantes is not None else 0)
+            m4.metric("Packs totales sugeridos", int(pedido["Packs a Comprar"].fillna(0).sum()))
+
+            if posibles_faltantes is not None and len(posibles_faltantes) > 0:
+                st.warning(
+                    "Se detectaron posibles faltantes: productos sin ventas y con stock bajo. "
+                    "No modifican automáticamente el pedido; revisalos manualmente."
+                )
 
             st.download_button(
                 "DESCARGAR PEDIDO FINAL",
@@ -273,6 +281,11 @@ with tempfile.TemporaryDirectory() as tmp_dir:
 
             with st.expander("Ver vista previa del pedido", expanded=False):
                 st.dataframe(pedido.head(100), use_container_width=True)
+
+            if posibles_faltantes is not None and len(posibles_faltantes) > 0:
+                with st.expander("Ver posibles faltantes", expanded=True):
+                    st.warning("Estos productos no tuvieron ventas y tienen stock bajo. Revisar manualmente.")
+                    st.dataframe(posibles_faltantes, use_container_width=True)
 
             if len(sin_clasificar) > 0:
                 with st.expander("Ver productos sin clasificar", expanded=True):

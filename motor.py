@@ -502,6 +502,34 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         pedido["Observación"].astype(str).str.contains("Posible faltante", na=False)
     ].copy()
 
+    stock_negativo = pedido[
+        pd.to_numeric(pedido["Stock"], errors="coerce").fillna(0) < 0
+    ].copy()
+
+
+    carrito = pedido[pedido["Packs a Comprar"] > 0][[
+        "Código Compra",
+        "Producto Compra",
+        "Packs a Comprar",
+        "Observación"
+    ]].copy()
+
+    advertencias = []
+
+    if len(stock_negativo) > 0:
+        advertencias.append(f"⚠️ STOCK NEGATIVO DETECTADO: {len(stock_negativo)} productos. Revisar hoja 'Stock negativo'.")
+
+    if len(sin_clasificar) > 0:
+        advertencias.append(f"⚠️ PRODUCTOS SIN CLASIFICAR: {len(sin_clasificar)} productos. Revisar hoja 'Sin clasificar'.")
+
+    if len(posibles_faltantes) > 0:
+        advertencias.append(f"⚠️ POSIBLES FALTANTES: {len(posibles_faltantes)} productos. Revisar hoja 'Posibles faltantes'.")
+
+    if not advertencias:
+        advertencias = ["✅ No se detectaron alertas importantes."]
+
+    advertencias_df = pd.DataFrame({"Carrito": advertencias})
+
     explicacion = pd.DataFrame({
         "Explicación": [
             "ARCHIVOS DE ENTRADA",
@@ -540,7 +568,11 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     })
 
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
+        advertencias_df.to_excel(writer, index=False, sheet_name="Carrito", startrow=0)
+        carrito.to_excel(writer, index=False, sheet_name="Carrito", startrow=len(advertencias_df) + 3)
+
         pedido.to_excel(writer, index=False, sheet_name="Pedido Final")
+        stock_negativo.to_excel(writer, index=False, sheet_name="Stock negativo")
         posibles_faltantes.to_excel(writer, index=False, sheet_name="Posibles faltantes")
         sin_clasificar.to_excel(writer, index=False, sheet_name="Sin clasificar")
         explicacion.to_excel(writer, index=False, sheet_name="Explicación")
@@ -549,6 +581,7 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
 
     return {
         "pedido": pedido,
+        "stock_negativo": stock_negativo,
         "posibles_faltantes": posibles_faltantes,
         "sin_clasificar": sin_clasificar,
         "output_file": output_file,

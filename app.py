@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "v0.5-admin-pin"
+APP_VERSION = "v0.6-stock-negativo"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -404,14 +404,22 @@ with tempfile.TemporaryDirectory() as tmp_dir:
             pedido = result["pedido"]
             sin_clasificar = result["sin_clasificar"]
             posibles_faltantes = result.get("posibles_faltantes")
+            stock_negativo = result.get("stock_negativo")
 
             st.success("Pedido generado correctamente.")
 
-            m1, m2, m3, m4 = st.columns(4)
+            m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric("Productos en pedido", len(pedido))
-            m2.metric("Productos sin clasificar", len(sin_clasificar))
-            m3.metric("Posibles faltantes", len(posibles_faltantes) if posibles_faltantes is not None else 0)
-            m4.metric("Packs totales sugeridos", int(pedido["Packs a Comprar"].fillna(0).sum()))
+            m2.metric("Stock negativo", len(stock_negativo) if stock_negativo is not None else 0)
+            m3.metric("Sin clasificar", len(sin_clasificar))
+            m4.metric("Posibles faltantes", len(posibles_faltantes) if posibles_faltantes is not None else 0)
+            m5.metric("Packs sugeridos", int(pedido["Packs a Comprar"].fillna(0).sum()))
+
+            if stock_negativo is not None and len(stock_negativo) > 0:
+                st.error(
+                    "⚠️ Se detectaron productos con stock negativo. "
+                    "Esto puede indicar errores de inventario o descarga."
+                )
 
             if posibles_faltantes is not None and len(posibles_faltantes) > 0:
                 st.warning(
@@ -429,6 +437,11 @@ with tempfile.TemporaryDirectory() as tmp_dir:
 
             with st.expander("Ver vista previa del pedido", expanded=False):
                 st.dataframe(pedido.head(100), use_container_width=True)
+
+            if stock_negativo is not None and len(stock_negativo) > 0:
+                with st.expander("Ver stock negativo", expanded=True):
+                    st.error("Productos con stock negativo detectado.")
+                    st.dataframe(stock_negativo, use_container_width=True)
 
             if posibles_faltantes is not None and len(posibles_faltantes) > 0:
                 with st.expander("Ver posibles faltantes", expanded=True):

@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "v0.6-stock-negativo"
+APP_VERSION = "Mark VII (v0.7-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -253,6 +253,93 @@ if modo == "Administrador":
                                 st.warning(adv)
 
     st.stop()
+
+
+
+with st.expander("📘 Cómo exportar los archivos", expanded=False):
+
+    st.markdown("""
+# ⚠️ IMPORTANTE — FILTRO DE FECHAS
+
+Usar EXACTAMENTE el mismo rango de fechas en:
+
+- Cajas por Sabor
+- Mix de Ventas
+
+Y luego cargar esa misma cantidad de días en:
+`Días analizados`.
+
+---
+
+# 1️⃣ STOCK
+
+## Ruta
+`Informes → Informe de stock por depósito`
+
+### Pasos
+1. Seleccionar `Consolidado`
+2. Click en `Buscar`
+3. Click en `Exportar`
+4. Guardar como `.csv`
+
+---
+
+# 2️⃣ CAJAS POR SABOR
+
+## Ruta
+`Tableros → Principal → Informe de bajas de cajas`
+
+### Pasos
+1. Verificar filtro de fechas
+2. Ubicar el gráfico `Cajas por Sabor`
+3. Click en los 3 puntos
+4. `Exportar datos`
+5. Seleccionar:
+   - ✅ Datos resumidos
+   - ✅ `.xlsx`
+
+---
+
+# 3️⃣ MIX DE VENTAS
+
+## Ruta
+`Tableros → Principal → Mix de Ventas`
+
+### ⚠️ IMPORTANTE
+Antes de exportar hay que abrir manualmente los grupos usando el símbolo `+`.
+
+### Abrir:
+
+#### Heladería → Impulsivos
+- Bombones
+- Palitos
+- Familiar
+- Tentación
+- Postres
+
+#### Congelados
+- Congelados Multimarca
+- Frizzio
+
+### Exportación
+1. Click en `Exportar datos`
+2. Seleccionar:
+   - ✅ Datos con diseño actual
+   - ✅ `.xlsx`
+
+---
+
+# ⚠️ ALERTAS DEL SISTEMA
+
+## 🔴 Stock negativo
+Error de inventario o descarga.
+
+## 🟠 Productos sin clasificar
+Producto faltante en Maestro.
+
+## 🟡 Posibles faltantes
+Producto sin ventas y con stock bajo.
+""")
 
 
 st.header("Generar pedido")

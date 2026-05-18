@@ -17,11 +17,20 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark IX (v0.9-beta)"
+APP_VERSION = "Mark X (v1.0-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_MAESTRO = APP_DIR / "maestro" / "Maestro_Productos_Grido.xlsx"
+
+
+def mostrar_screenshot(nombre_archivo, caption):
+    img_path = APP_DIR / "assets" / "screenshots" / nombre_archivo
+    if img_path.exists():
+        st.image(str(img_path), caption=caption, use_container_width=True)
+    else:
+        st.error(f"No se encontró la imagen: {nombre_archivo}")
+
 
 st.title("🍦 GridoPlanner")
 st.caption(f"Herramienta experimental para generar sugerencias de pedido a partir de los exports de Grido. Versión {APP_VERSION}")
@@ -258,88 +267,71 @@ if modo == "Administrador":
 
 with st.expander("📘 Cómo exportar los archivos", expanded=False):
 
-    st.markdown("""
-# ⚠️ IMPORTANTE — FILTRO DE FECHAS
+    st.markdown("### ⚠️ Primero: usar el mismo filtro de fechas")
+    st.write(
+        "Usá exactamente el mismo rango de fechas en **Cajas por Sabor** y en **Mix de Ventas**. "
+        "Después cargá esa misma cantidad de días en **Días analizados**."
+    )
 
-Usar EXACTAMENTE el mismo rango de fechas en:
+    st.markdown("---")
 
-- Cajas por Sabor
-- Mix de Ventas
+    st.markdown("### 1️⃣ Stock")
+    st.write("Ruta: **Informes → Informe de stock por depósito**")
+    st.write(
+        "1. Seleccionar **Consolidado**.  \n"
+        "2. Presionar **Buscar**.  \n"
+        "3. Presionar **Exportar**.  \n"
+        "4. Guardar como archivo **CSV**."
+    )
+    mostrar_screenshot("stock_01_informe_stock.png", "Stock: seleccionar Consolidado, buscar y exportar.")
+    mostrar_screenshot("stock_02_guardar_csv.png", "Guardar el archivo de stock como CSV.")
 
-Y luego cargar esa misma cantidad de días en:
-`Días analizados`.
+    st.markdown("---")
 
----
+    st.markdown("### 2️⃣ Cajas por Sabor")
+    st.write("Ruta: **Tableros → Principal → Informe de bajas de cajas**")
+    st.write(
+        "1. Verificar el filtro de fechas.  \n"
+        "2. Ubicar el cuadro **Cajas por Sabor**.  \n"
+        "3. Abrir los tres puntos del gráfico.  \n"
+        "4. Elegir **Exportar datos**.  \n"
+        "5. Seleccionar **Datos resumidos** y formato **.xlsx**."
+    )
+    mostrar_screenshot("sabores_01_cajas_por_sabor.png", "Cajas por Sabor: exportar desde los tres puntos del gráfico.")
+    mostrar_screenshot("sabores_02_exportar_datos_resumidos.png", "Elegir Datos resumidos y formato .xlsx.")
+    mostrar_screenshot("sabores_03_guardar_xlsx.png", "Guardar como Cajas por Sabor.xlsx.")
 
-# 1️⃣ STOCK
+    st.markdown("---")
 
-## Ruta
-`Informes → Informe de stock por depósito`
+    st.markdown("### 3️⃣ Mix de Ventas")
+    st.write("Ruta: **Tableros → Principal → Mix de Ventas**")
+    st.warning(
+        "Antes de exportar, desplegá los grupos con el símbolo '+'. "
+        "Si no los abrís, los productos no aparecen en el Excel y el pedido puede quedar incompleto."
+    )
+    st.write("Grupos a abrir en **Heladería → Impulsivos**:")
+    st.write("- Bombones  \n- Palitos  \n- Familiar  \n- Tentación  \n- Postres")
+    st.write("Grupos a abrir en **Congelados**:")
+    st.write("- Congelados Multimarca  \n- Frizzio")
+    st.write(
+        "Exportación correcta:  \n"
+        "1. Abrir los grupos necesarios.  \n"
+        "2. Presionar **Exportar datos**.  \n"
+        "3. Elegir **Datos con diseño actual**.  \n"
+        "4. Guardar como **.xlsx**."
+    )
+    mostrar_screenshot("mix_01_grupos_desplegados.png", "Mix de Ventas: grupos desplegados antes de exportar.")
+    mostrar_screenshot("mix_02_exportar_disenio_actual.png", "Elegir Datos con diseño actual y formato .xlsx.")
+    mostrar_screenshot("mix_03_guardar_data.png", "Guardar como data.xlsx.")
 
-### Pasos
-1. Seleccionar `Consolidado`
-2. Click en `Buscar`
-3. Click en `Exportar`
-4. Guardar como `.csv`
+    st.markdown("---")
 
----
-
-# 2️⃣ CAJAS POR SABOR
-
-## Ruta
-`Tableros → Principal → Informe de bajas de cajas`
-
-### Pasos
-1. Verificar filtro de fechas
-2. Ubicar el gráfico `Cajas por Sabor`
-3. Click en los 3 puntos
-4. `Exportar datos`
-5. Seleccionar:
-   - ✅ Datos resumidos
-   - ✅ `.xlsx`
-
----
-
-# 3️⃣ MIX DE VENTAS
-
-## Ruta
-`Tableros → Principal → Mix de Ventas`
-
-### ⚠️ IMPORTANTE
-Antes de exportar hay que abrir manualmente los grupos usando el símbolo `+`.
-
-### Abrir:
-
-#### Heladería → Impulsivos
-- Bombones
-- Palitos
-- Familiar
-- Tentación
-- Postres
-
-#### Congelados
-- Congelados Multimarca
-- Frizzio
-
-### Exportación
-1. Click en `Exportar datos`
-2. Seleccionar:
-   - ✅ Datos con diseño actual
-   - ✅ `.xlsx`
-
----
-
-# ⚠️ ALERTAS DEL SISTEMA
-
-## 🔴 Stock negativo
-Error de inventario o descarga.
-
-## 🟠 Productos sin clasificar
-Producto faltante en Maestro.
-
-## 🟡 Posibles faltantes
-Producto sin ventas y con stock bajo.
-""")
+    st.markdown("### Alertas del sistema")
+    st.write(
+        "🔴 **Stock negativo:** revisar inventario o descargas.  \n"
+        "🟠 **Productos sin clasificar:** falta agregarlos al Maestro.  \n"
+        "🟡 **Posibles faltantes:** producto sin ventas y con stock bajo."
+    )
 
 
 st.header("Generar pedido")

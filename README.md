@@ -91,3 +91,10 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Corrección definitiva de branding y versión.
 - Toda la app muestra Mark IX (v0.9-beta).
 - Corrección de renderizado de screenshots en Streamlit Cloud.
+
+
+## Cambios Mark X / v1.0-beta
+
+- Corrección real del tutorial visual.
+- El tutorial ahora llama efectivamente a los screenshots incluidos.
+- Versión visible: Mark X (v1.0-beta).

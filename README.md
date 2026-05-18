@@ -84,3 +84,10 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Títulos del tutorial más compactos.
 - Carpeta interna y ZIP con nombre consistente.
 - Ancho fijo para Código Compra en hoja Carrito: 15.
+
+
+## Cambios Mark IX / v0.9-beta
+
+- Corrección definitiva de branding y versión.
+- Toda la app muestra Mark IX (v0.9-beta).
+- Corrección de renderizado de screenshots en Streamlit Cloud.

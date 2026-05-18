@@ -75,3 +75,12 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Se agrega PIN simple para habilitar la carga/reemplazo del maestro desde modo administrador.
 - PIN inicial: `2468`.
 - El PIN se puede cambiar editando `ADMIN_PIN` en `app.py`.
+
+
+## Cambios Mark VIII / v0.8-beta
+
+- Tutorial visual dentro de la app.
+- Screenshots reales de Stock, Cajas por Sabor y Mix de Ventas.
+- Títulos del tutorial más compactos.
+- Carpeta interna y ZIP con nombre consistente.
+- Ancho fijo para Código Compra en hoja Carrito: 15.

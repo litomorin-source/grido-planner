@@ -382,6 +382,15 @@ def format_workbook(path):
             max_len = max(len(str(cell.value)) if cell.value is not None else 0 for cell in col)
             ws.column_dimensions[get_column_letter(col[0].column)].width = min(max(max_len + 2, 14), 70)
         ws.freeze_panes = "A2"
+
+    # Código Compra ancho fijo carrito Mark VIII
+    if "Carrito" in wb.sheetnames:
+        ws_carrito = wb["Carrito"]
+        for row in ws_carrito.iter_rows():
+            for cell in row:
+                if str(cell.value).strip() == "Código Compra":
+                    ws_carrito.column_dimensions[cell.column_letter].width = 15
+
     wb.save(path)
 
 

@@ -38,17 +38,20 @@ def formato_moneda_ar(valor):
     except Exception:
         valor = 0.0
 
-    signo = "-" if valor < 0 else ""
-    valor_abs = abs(valor)
-    entero = int(valor_abs)
-    decimales = int(round((valor_abs - entero) * 100))
-
-    if decimales == 100:
-        entero += 1
-        decimales = 0
-
+    entero = int(abs(valor))
+    decimales = int(round((abs(valor) - entero) * 100))
     entero_txt = f"{entero:,}".replace(",", ".")
+    signo = "-" if valor < 0 else ""
     return f"$ {signo}{entero_txt},{decimales:02d}"
+
+
+st.title("🍦 GridoPlanner")
+st.caption(f"Herramienta experimental para generar sugerencias de pedido a partir de los exports de Grido. Versión {APP_VERSION}")
+
+modo = st.sidebar.radio("Modo", ["Usuario", "Administrador"])
+
+st.sidebar.markdown("---")
+st.sidebar.info(f"Versión {APP_VERSION}. Subí cada archivo en su campo correspondiente.")
 
 
 def detectar_grupos_powerbi(file_path):

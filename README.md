@@ -123,15 +123,8 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Columnas monetarias del Excel con formato de moneda.
 
 
-## Cambios Mark XIII / v1.3-beta
-
-- Corrección de valorización: los precios del Modelo de Carrito se interpretan como centavos.
-- El motor divide el precio por 100 después de leerlo.
-- Ejemplo: `123456` se interpreta como `$ 1.234,56`.
-
-
 ## Cambios Mark XIV / v1.4-beta
 
-- Nueva lógica de valorización.
-- Si el precio viene como `12345,05`, el sistema toma `12345`.
-- Se eliminan automáticamente los últimos 3 caracteres decimales del archivo Modelo de Carrito.
+- Corrige el error NameError de Mark XIII.
+- Mantiene el selector de modo Usuario/Administrador.
+- Corrige valorización dividiendo los precios del Modelo de Carrito por 100.

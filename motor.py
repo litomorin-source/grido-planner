@@ -68,24 +68,9 @@ def load_precios_carrito(carrito_path=DEFAULT_CARRITO_FILE):
                 precio = pd.to_numeric(s, errors="coerce")
 
             if pd.notna(precio):
-
-                # El archivo Modelo de Carrito exporta precios con sufijos tipo ",05"
-                # que no representan centavos reales para este análisis.
-                # Ejemplo:
-                #   "12345,05" -> 12345
-                # Entonces eliminamos los últimos 3 caracteres si existe coma decimal.
-
-                precio_txt = str(precio)
-
-                if "," in precio_txt:
-                    precio_txt = precio_txt[:-3]
-
-                try:
-                    precio_final = float(precio_txt)
-                except Exception:
-                    precio_final = float(precio)
-
-                precios[codigo_norm] = precio_final
+                # En el Modelo de Carrito, los precios vienen expresados como centavos.
+                # Ejemplo: 123456 representa $ 1.234,56.
+                precios[codigo_norm] = float(precio) / 100
 
         return precios
 

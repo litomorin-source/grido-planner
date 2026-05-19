@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark XIV (v1.4-beta)"
+APP_VERSION = "Mark XV (v1.5-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -34,15 +34,13 @@ def mostrar_screenshot(nombre_archivo, caption):
 
 def formato_moneda_ar(valor):
     try:
-        valor = float(valor)
+        valor = int(float(valor))
     except Exception:
-        valor = 0.0
+        valor = 0
 
-    entero = int(abs(valor))
-    decimales = int(round((abs(valor) - entero) * 100))
-    entero_txt = f"{entero:,}".replace(",", ".")
     signo = "-" if valor < 0 else ""
-    return f"$ {signo}{entero_txt},{decimales:02d}"
+    entero_txt = f"{abs(valor):,}".replace(",", ".")
+    return f"$ {signo}{entero_txt}"
 
 
 st.title("🍦 GridoPlanner")

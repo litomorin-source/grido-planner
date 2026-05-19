@@ -68,9 +68,7 @@ def load_precios_carrito(carrito_path=DEFAULT_CARRITO_FILE):
                 precio = pd.to_numeric(s, errors="coerce")
 
             if pd.notna(precio):
-                # En el Modelo de Carrito, los precios vienen expresados como centavos.
-                # Ejemplo: 123456 representa $ 1.234,56.
-                precios[codigo_norm] = float(precio) / 100
+                precios[codigo_norm] = int(float(precio))
 
         return precios
 
@@ -566,8 +564,9 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         lambda r: r["Precio Pack"] / r["Compra Mínima"] if r["Compra Mínima"] else 0,
         axis=1
     )
-    final["Valor Stock Actual"] = final["Stock"] * final["Costo Unitario Eq"]
-    final["Valor Pedido Sugerido"] = final["Packs a Comprar"] * final["Precio Pack"]
+    final["Valor Stock Actual"] = (final["Stock"] * final["Costo Unitario Eq"]).fillna(0).astype(int)
+    final["Valor Pedido Sugerido"] = (final["Packs a Comprar"] * final["Precio Pack"]).fillna(0).astype(int)
+    final["Precio Pack"] = final["Precio Pack"].fillna(0).astype(int)
 
     all_detected = pd.concat([
         stock_rows[["Origen", "Grupo", "SubRubro", "Producto Base", "Nombre original", "Regla Conversión", "Alias Encontrado"]],

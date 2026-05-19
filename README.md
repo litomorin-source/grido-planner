@@ -112,3 +112,26 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Nuevas métricas en la app:
   - Valor stock actual
   - Valor pedido sugerido
+
+
+## Cambios Mark XII / v1.2-beta
+
+- Corrección del parseo de precios del archivo Modelo de Carrito.
+- Soporta formato argentino: `42.000,50`.
+- Si Excel ya lee el precio como número, no lo altera.
+- Métricas de la app con formato moneda argentino: `$ 9.738.264,52`.
+- Columnas monetarias del Excel con formato de moneda.
+
+
+## Cambios Mark XIII / v1.3-beta
+
+- Corrección de valorización: los precios del Modelo de Carrito se interpretan como centavos.
+- El motor divide el precio por 100 después de leerlo.
+- Ejemplo: `123456` se interpreta como `$ 1.234,56`.
+
+
+## Cambios Mark XIV / v1.4-beta
+
+- Nueva lógica de valorización.
+- Si el precio viene como `12345,05`, el sistema toma `12345`.
+- Se eliminan automáticamente los últimos 3 caracteres decimales del archivo Modelo de Carrito.

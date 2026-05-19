@@ -46,13 +46,46 @@ def load_precios_carrito(carrito_path=DEFAULT_CARRITO_FILE):
                 codigo_norm = codigo
 
             precio_raw = row[precio_col]
-            try:
-                precio = float(str(precio_raw).replace(".", "").replace(",", "."))
-            except Exception:
-                precio = pd.to_numeric(precio_raw, errors="coerce")
+
+            # Parser robusto para precios argentinos:
+            # - Si Excel ya lo leyó como número, se usa directo.
+            # - Si viene como texto "42.000,50", se interpreta como 42000.50.
+            # - Si viene como texto "42000.50", se interpreta como 42000.50.
+            if isinstance(precio_raw, (int, float)) and pd.notna(precio_raw):
+                precio = float(precio_raw)
+            else:
+                s = str(precio_raw).strip()
+                s = s.replace("$", "").replace(" ", "")
+
+                if "," in s:
+                    # Formato argentino: 42.000,50
+                    s = s.replace(".", "").replace(",", ".")
+                else:
+                    # Sin coma decimal: dejar punto como decimal si existe.
+                    # Si el punto era separador de miles, Excel normalmente ya lo hubiera leído como texto con coma decimal.
+                    pass
+
+                precio = pd.to_numeric(s, errors="coerce")
 
             if pd.notna(precio):
-                precios[codigo_norm] = float(precio)
+
+                # El archivo Modelo de Carrito exporta precios con sufijos tipo ",05"
+                # que no representan centavos reales para este análisis.
+                # Ejemplo:
+                #   "12345,05" -> 12345
+                # Entonces eliminamos los últimos 3 caracteres si existe coma decimal.
+
+                precio_txt = str(precio)
+
+                if "," in precio_txt:
+                    precio_txt = precio_txt[:-3]
+
+                try:
+                    precio_final = float(precio_txt)
+                except Exception:
+                    precio_final = float(precio)
+
+                precios[codigo_norm] = precio_final
 
         return precios
 

@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark XII (v1.1-beta)"
+APP_VERSION = "Mark XIV (v1.4-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -32,13 +32,23 @@ def mostrar_screenshot(nombre_archivo, caption):
         st.error(f"No se encontró la imagen: {nombre_archivo}")
 
 
-st.title("🍦 GridoPlanner")
-st.caption(f"Herramienta experimental para generar sugerencias de pedido a partir de los exports de Grido. Versión {APP_VERSION}")
+def formato_moneda_ar(valor):
+    try:
+        valor = float(valor)
+    except Exception:
+        valor = 0.0
 
-modo = st.sidebar.radio("Modo", ["Usuario", "Administrador"])
+    signo = "-" if valor < 0 else ""
+    valor_abs = abs(valor)
+    entero = int(valor_abs)
+    decimales = int(round((valor_abs - entero) * 100))
 
-st.sidebar.markdown("---")
-st.sidebar.info(f"Versión {APP_VERSION}. Subí cada archivo en su campo correspondiente.")
+    if decimales == 100:
+        entero += 1
+        decimales = 0
+
+    entero_txt = f"{entero:,}".replace(",", ".")
+    return f"$ {signo}{entero_txt},{decimales:02d}"
 
 
 def detectar_grupos_powerbi(file_path):
@@ -498,8 +508,8 @@ with tempfile.TemporaryDirectory() as tmp_dir:
             valor_pedido_total = result.get("valor_pedido_total", 0)
 
             v1, v2 = st.columns(2)
-            v1.metric("Valor stock actual", f"$ {valor_stock_total:,.0f}".replace(",", "."))
-            v2.metric("Valor pedido sugerido", f"$ {valor_pedido_total:,.0f}".replace(",", "."))
+            v1.metric("Valor stock actual", formato_moneda_ar(valor_stock_total))
+            v2.metric("Valor pedido sugerido", formato_moneda_ar(valor_pedido_total))
 
             if stock_negativo is not None and len(stock_negativo) > 0:
                 st.error(

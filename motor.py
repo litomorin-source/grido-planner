@@ -11,6 +11,63 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
 
+# Archivo opcional con precios: columna B = código pack, columna I = precio.
+DEFAULT_CARRITO_FILE = Path(__file__).resolve().parent / "datos" / "Modelo_de_Carrito.xlsx"
+
+
+def load_precios_carrito(carrito_path=DEFAULT_CARRITO_FILE):
+    """
+    Lee el archivo Modelo de Carrito.
+    Columna B: código del pack.
+    Columna I: precio del pack.
+    Devuelve dict {codigo: precio}.
+    """
+    if not Path(carrito_path).exists():
+        return {}
+
+    try:
+        df = pd.read_excel(carrito_path)
+        if df.shape[1] < 9:
+            return {}
+
+        codigo_col = df.columns[1]  # B
+        precio_col = df.columns[8]  # I
+
+        precios = {}
+        for _, row in df.iterrows():
+            codigo = str(row[codigo_col]).strip()
+            if codigo.lower() in {"nan", ""}:
+                continue
+
+            # normalizar códigos tipo 4000147.0 -> 4000147
+            try:
+                codigo_norm = str(int(float(codigo)))
+            except Exception:
+                codigo_norm = codigo
+
+            precio_raw = row[precio_col]
+            try:
+                precio = float(str(precio_raw).replace(".", "").replace(",", "."))
+            except Exception:
+                precio = pd.to_numeric(precio_raw, errors="coerce")
+
+            if pd.notna(precio):
+                precios[codigo_norm] = float(precio)
+
+        return precios
+
+    except Exception:
+        return {}
+
+
+def normalizar_codigo_compra(codigo):
+    try:
+        return str(int(float(codigo)))
+    except Exception:
+        return str(codigo).strip()
+
+
+
 def strip_accents(text):
     return "".join(
         c for c in unicodedata.normalize("NFD", str(text))
@@ -399,6 +456,7 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     productos = load_productos(maestro_file)
     aliases = load_aliases(maestro_file)
     exclusiones = load_exclusiones(maestro_file)
+    precios_carrito = load_precios_carrito()
 
     productos_validos = productos[(productos["Activo"]) & (~productos["Excluir"])].copy()
     productos_map = productos_validos.set_index("Producto Base").to_dict(orient="index")
@@ -479,8 +537,19 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
 
     final["Observación"] = final.apply(observacion_faltante, axis=1)
     final["Compra Mínima"] = pd.to_numeric(final["Compra Mínima"], errors="coerce").fillna(1)
+
+    final["Código Compra Normalizado"] = final["Código Compra"].apply(normalizar_codigo_compra)
+    final["Precio Pack"] = final["Código Compra Normalizado"].map(precios_carrito).fillna(0)
+
     final["Packs a Comprar"] = final.apply(lambda r: ceil_to_int(r["Reposición necesaria"] / r["Compra Mínima"]) if r["Reposición necesaria"] > 0 else 0, axis=1)
     final["Unidades Finales"] = final["Packs a Comprar"] * final["Compra Mínima"]
+
+    final["Costo Unitario Eq"] = final.apply(
+        lambda r: r["Precio Pack"] / r["Compra Mínima"] if r["Compra Mínima"] else 0,
+        axis=1
+    )
+    final["Valor Stock Actual"] = final["Stock"] * final["Costo Unitario Eq"]
+    final["Valor Pedido Sugerido"] = final["Packs a Comprar"] * final["Precio Pack"]
 
     all_detected = pd.concat([
         stock_rows[["Origen", "Grupo", "SubRubro", "Producto Base", "Nombre original", "Regla Conversión", "Alias Encontrado"]],
@@ -494,6 +563,7 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     pedido = final[[
         "Grupo", "Producto Base", "Stock", "Ventas período", "Venta Semanal", "Semanas Stock",
         "Reposición necesaria", "Compra Mínima", "Packs a Comprar", "Unidades Finales",
+        "Precio Pack", "Valor Stock Actual", "Valor Pedido Sugerido",
         "Código Compra", "Producto Compra", "Observación", "Productos agrupados"
     ]].copy()
 
@@ -502,7 +572,11 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         "Ventas período": f"Ventas {int(dias_analizados)} días"
     })
 
-    for col in ["Stock", f"Ventas {int(dias_analizados)} días", "Venta Semanal", "Semanas Stock", "Reposición necesaria", "Compra Mínima", "Unidades Finales"]:
+    for col in [
+        "Stock", f"Ventas {int(dias_analizados)} días", "Venta Semanal", "Semanas Stock",
+        "Reposición necesaria", "Compra Mínima", "Unidades Finales",
+        "Precio Pack", "Valor Stock Actual", "Valor Pedido Sugerido"
+    ]:
         pedido[col] = pd.to_numeric(pedido[col], errors="coerce").round(2)
 
     pedido = pedido.sort_values(["Grupo", "Producto"])
@@ -520,6 +594,8 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         "Código Compra",
         "Producto Compra",
         "Packs a Comprar",
+        "Precio Pack",
+        "Valor Pedido Sugerido",
         "Observación"
     ]].copy()
 
@@ -559,6 +635,8 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
             "Reposición necesaria = (Venta semanal × Objetivo total) - Stock",
             "Packs a comprar = redondeo hacia arriba(Reposición necesaria / Compra mínima)",
             "Unidades finales = Packs a comprar × Compra mínima",
+            "Valor pedido sugerido = Packs a comprar × Precio pack",
+            "Valor stock actual = Stock × (Precio pack / Compra mínima)",
             "",
             "ACLARACIÓN",
             "Tiempo de reposición NO es la columna Tránsito del archivo stock.",
@@ -595,4 +673,6 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         "sin_clasificar": sin_clasificar,
         "output_file": output_file,
         "config": config,
+        "valor_stock_total": float(pd.to_numeric(pedido["Valor Stock Actual"], errors="coerce").fillna(0).sum()),
+        "valor_pedido_total": float(pd.to_numeric(pedido["Valor Pedido Sugerido"], errors="coerce").fillna(0).sum()),
     }

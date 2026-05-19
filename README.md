@@ -98,3 +98,17 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Corrección real del tutorial visual.
 - El tutorial ahora llama efectivamente a los screenshots incluidos.
 - Versión visible: Mark X (v1.0-beta).
+
+
+## Cambios Mark XI / v1.1-beta
+
+- Se agrega archivo de precios `datos/Modelo_de_Carrito.xlsx`.
+- Cruce por código compra contra columna B del carrito.
+- Precio pack desde columna I.
+- Nuevas columnas:
+  - Precio Pack
+  - Valor Stock Actual
+  - Valor Pedido Sugerido
+- Nuevas métricas en la app:
+  - Valor stock actual
+  - Valor pedido sugerido

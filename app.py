@@ -17,7 +17,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark X (v1.0-beta)"
+APP_VERSION = "Mark XII (v1.1-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -493,6 +493,13 @@ with tempfile.TemporaryDirectory() as tmp_dir:
             m3.metric("Sin clasificar", len(sin_clasificar))
             m4.metric("Posibles faltantes", len(posibles_faltantes) if posibles_faltantes is not None else 0)
             m5.metric("Packs sugeridos", int(pedido["Packs a Comprar"].fillna(0).sum()))
+
+            valor_stock_total = result.get("valor_stock_total", 0)
+            valor_pedido_total = result.get("valor_pedido_total", 0)
+
+            v1, v2 = st.columns(2)
+            v1.metric("Valor stock actual", f"$ {valor_stock_total:,.0f}".replace(",", "."))
+            v2.metric("Valor pedido sugerido", f"$ {valor_pedido_total:,.0f}".replace(",", "."))
 
             if stock_negativo is not None and len(stock_negativo) > 0:
                 st.error(

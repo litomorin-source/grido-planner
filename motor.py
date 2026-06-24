@@ -616,6 +616,29 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         "Observación"
     ]].copy()
 
+    valorizacion_categoria = (
+        pedido.groupby("Grupo", as_index=False)
+        .agg({
+            "Valor Stock Actual": "sum",
+            "Valor Pedido Sugerido": "sum",
+            "Stock": "sum",
+            "Packs a Comprar": "sum",
+        })
+        .sort_values("Valor Stock Actual", ascending=False)
+    )
+
+    valorizacion_producto = pedido[[
+        "Grupo",
+        "Producto",
+        "Stock",
+        "Precio Pack",
+        "Valor Stock Actual",
+        "Packs a Comprar",
+        "Valor Pedido Sugerido",
+        "Código Compra",
+        "Producto Compra",
+    ]].copy().sort_values("Valor Stock Actual", ascending=False)
+
     advertencias = []
 
     if len(stock_negativo) > 0:
@@ -675,6 +698,9 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         advertencias_df.to_excel(writer, index=False, sheet_name="Carrito", startrow=0)
         carrito.to_excel(writer, index=False, sheet_name="Carrito", startrow=len(advertencias_df) + 3)
 
+        valorizacion_categoria.to_excel(writer, index=False, sheet_name="Valorización categoría")
+        valorizacion_producto.to_excel(writer, index=False, sheet_name="Valorización producto")
+
         pedido.to_excel(writer, index=False, sheet_name="Pedido Final")
         stock_negativo.to_excel(writer, index=False, sheet_name="Stock negativo")
         posibles_faltantes.to_excel(writer, index=False, sheet_name="Posibles faltantes")
@@ -692,4 +718,6 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
         "config": config,
         "valor_stock_total": float(pd.to_numeric(pedido["Valor Stock Actual"], errors="coerce").fillna(0).sum()),
         "valor_pedido_total": float(pd.to_numeric(pedido["Valor Pedido Sugerido"], errors="coerce").fillna(0).sum()),
+        "valorizacion_categoria": valorizacion_categoria,
+        "valorizacion_producto": valorizacion_producto,
     }

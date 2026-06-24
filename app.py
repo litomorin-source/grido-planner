@@ -17,11 +17,12 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark XV (v1.5-beta)"
+APP_VERSION = "Mark XVIII (v1.7-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_MAESTRO = APP_DIR / "maestro" / "Maestro_Productos_Grido.xlsx"
+DEFAULT_CARRITO = APP_DIR / "datos" / "Modelo_de_Carrito.xlsx"
 
 
 def mostrar_screenshot(nombre_archivo, caption):
@@ -178,6 +179,39 @@ def validar_maestro(maestro_path):
     return len(errores) == 0, errores, advertencias
 
 
+
+def validar_carrito_precios(carrito_path):
+    errores = []
+    advertencias = []
+    try:
+        df = pd.read_excel(carrito_path)
+    except Exception as e:
+        return False, [f"No pude abrir el Excel de carrito/precios. Error: {e}"], []
+
+    if df.shape[1] < 9:
+        return False, ["El archivo debe tener al menos 9 columnas. Se espera código en columna B y precio en columna I."], []
+
+    codigo_col = df.columns[1]
+    precio_col = df.columns[8]
+
+    if len(df[codigo_col].dropna()) == 0:
+        errores.append("No se encontraron códigos en la columna B.")
+
+    precios = pd.to_numeric(df[precio_col], errors="coerce")
+    precios_validos = precios.dropna()
+
+    if len(precios_validos) == 0:
+        errores.append("No se encontraron precios numéricos en la columna I.")
+    elif (precios_validos <= 0).any():
+        advertencias.append("Algunos precios de la columna I son cero o negativos.")
+
+    advertencias.append(f"Columna B detectada como código: {codigo_col}")
+    advertencias.append(f"Columna I detectada como precio: {precio_col}")
+    advertencias.append(f"Filas con precios válidos: {len(precios_validos)}")
+
+    return len(errores) == 0, errores, advertencias
+
+
 def estado_archivo(label, ok, msg, detalles=None, warning=None):
     if ok:
         st.success(f"✅ {label} OK")
@@ -202,7 +236,6 @@ if modo == "Administrador":
     st.caption(f"Versión {APP_VERSION}")
 
     st.subheader("Maestro de productos")
-
     if DEFAULT_MAESTRO.exists():
         st.success("Maestro actual encontrado.")
         st.download_button(
@@ -216,133 +249,90 @@ if modo == "Administrador":
         st.error("No se encontró el maestro en la carpeta maestro/.")
 
     st.markdown("---")
-    st.subheader("Subir nuevo maestro")
+    st.subheader("Archivo de precios / carrito")
+    if DEFAULT_CARRITO.exists():
+        st.success("Archivo de precios actual encontrado.")
+        st.download_button(
+            "Descargar carrito/precios actual",
+            data=DEFAULT_CARRITO.read_bytes(),
+            file_name="Modelo_de_Carrito.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+    else:
+        st.warning("No se encontró el archivo de precios en la carpeta datos/.")
 
-    st.info(
-        "Para modificar el maestro tenés que ingresar el PIN de administrador. "
-        "La app valida el archivo antes de permitir reemplazarlo."
-    )
+    st.markdown("---")
+    st.subheader("Subir archivos de administración")
+    st.info("Ingresá el PIN de administrador para subir Maestro o Carrito/precios.")
 
     pin = st.text_input("PIN de administrador", type="password")
 
     if pin != ADMIN_PIN:
-        st.warning("Ingresá el PIN correcto para habilitar la carga de maestro.")
+        st.warning("Ingresá el PIN correcto para habilitar la carga.")
     else:
-        st.success("PIN correcto. Carga de maestro habilitada.")
+        st.success("PIN correcto. Carga habilitada.")
+        tab_maestro, tab_carrito = st.tabs(["Actualizar maestro", "Actualizar carrito/precios"])
 
-        nuevo_maestro = st.file_uploader(
-            "Nuevo Maestro_Productos_Grido.xlsx",
-            type=["xlsx"],
-            help="Debe tener las hojas Productos, Aliases, Exclusiones y Configuración."
-        )
+        with tab_maestro:
+            nuevo_maestro = st.file_uploader(
+                "Nuevo Maestro_Productos_Grido.xlsx",
+                type=["xlsx"],
+                help="Debe tener las hojas Productos, Aliases, Exclusiones y Configuración.",
+                key="nuevo_maestro_upload"
+            )
+            if nuevo_maestro:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_path = Path(tmp_dir) / "Maestro_Productos_Grido.xlsx"
+                    tmp_path.write_bytes(nuevo_maestro.getvalue())
+                    ok, errores, advertencias = validar_maestro(tmp_path)
 
-        if nuevo_maestro:
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_path = Path(tmp_dir) / "Maestro_Productos_Grido.xlsx"
-                tmp_path.write_bytes(nuevo_maestro.getvalue())
+                    if ok:
+                        st.success("✅ Maestro validado correctamente.")
+                        if advertencias:
+                            with st.expander("Ver advertencias del maestro", expanded=False):
+                                for adv in advertencias:
+                                    st.warning(adv)
+                        st.warning("En Streamlit Cloud este reemplazo puede perderse si la app se reinicia. Para hacerlo permanente, subilo a GitHub.")
+                        if st.button("Reemplazar maestro en esta sesión", type="primary", use_container_width=True):
+                            DEFAULT_MAESTRO.parent.mkdir(exist_ok=True)
+                            DEFAULT_MAESTRO.write_bytes(tmp_path.read_bytes())
+                            st.success("Maestro reemplazado en esta sesión.")
+                    else:
+                        st.error("❌ El maestro no pasó la validación.")
+                        for err in errores:
+                            st.error(err)
 
-                ok, errores, advertencias = validar_maestro(tmp_path)
+        with tab_carrito:
+            nuevo_carrito = st.file_uploader(
+                "Nuevo Modelo_de_Carrito.xlsx",
+                type=["xlsx"],
+                help="Debe tener códigos en columna B y precios en columna I.",
+                key="nuevo_carrito_upload"
+            )
+            if nuevo_carrito:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_path = Path(tmp_dir) / "Modelo_de_Carrito.xlsx"
+                    tmp_path.write_bytes(nuevo_carrito.getvalue())
+                    ok, errores, advertencias = validar_carrito_precios(tmp_path)
 
-                if ok:
-                    st.success("✅ Maestro validado correctamente.")
-
-                    if advertencias:
-                        with st.expander("Ver advertencias", expanded=False):
-                            for adv in advertencias:
-                                st.warning(adv)
-
-                    st.warning(
-                        "Atención: en Streamlit Cloud, los archivos subidos desde la app pueden perderse si la app se reinicia. "
-                        "Para una prueba rápida sirve, pero para dejarlo permanente conviene subir el maestro actualizado a GitHub."
-                    )
-
-                    if st.button("Reemplazar maestro en esta sesión", type="primary", use_container_width=True):
-                        DEFAULT_MAESTRO.parent.mkdir(exist_ok=True)
-                        DEFAULT_MAESTRO.write_bytes(tmp_path.read_bytes())
-                        st.success("Maestro reemplazado en esta sesión. Ya podés volver al modo Usuario y generar pedidos.")
-                        st.info("Para hacerlo permanente, subí este mismo maestro a GitHub en la carpeta maestro.")
-
-                else:
-                    st.error("❌ El maestro no pasó la validación.")
-                    for err in errores:
-                        st.error(err)
-
-                    if advertencias:
-                        with st.expander("Ver advertencias", expanded=False):
-                            for adv in advertencias:
-                                st.warning(adv)
+                    if ok:
+                        st.success("✅ Carrito/precios validado correctamente.")
+                        if advertencias:
+                            with st.expander("Ver detalles del carrito/precios", expanded=False):
+                                for adv in advertencias:
+                                    st.info(adv)
+                        st.warning("En Streamlit Cloud este reemplazo puede perderse si la app se reinicia. Para hacerlo permanente, subilo a GitHub en datos/.")
+                        if st.button("Reemplazar carrito/precios en esta sesión", type="primary", use_container_width=True):
+                            DEFAULT_CARRITO.parent.mkdir(exist_ok=True)
+                            DEFAULT_CARRITO.write_bytes(tmp_path.read_bytes())
+                            st.success("Carrito/precios reemplazado en esta sesión.")
+                    else:
+                        st.error("❌ El archivo de carrito/precios no pasó la validación.")
+                        for err in errores:
+                            st.error(err)
 
     st.stop()
-
-
-
-with st.expander("📘 Cómo exportar los archivos", expanded=False):
-
-    st.markdown("### ⚠️ Primero: usar el mismo filtro de fechas")
-    st.write(
-        "Usá exactamente el mismo rango de fechas en **Cajas por Sabor** y en **Mix de Ventas**. "
-        "Después cargá esa misma cantidad de días en **Días analizados**."
-    )
-
-    st.markdown("---")
-
-    st.markdown("### 1️⃣ Stock")
-    st.write("Ruta: **Informes → Informe de stock por depósito**")
-    st.write(
-        "1. Seleccionar **Consolidado**.  \n"
-        "2. Presionar **Buscar**.  \n"
-        "3. Presionar **Exportar**.  \n"
-        "4. Guardar como archivo **CSV**."
-    )
-    mostrar_screenshot("stock_01_informe_stock.png", "Stock: seleccionar Consolidado, buscar y exportar.")
-    mostrar_screenshot("stock_02_guardar_csv.png", "Guardar el archivo de stock como CSV.")
-
-    st.markdown("---")
-
-    st.markdown("### 2️⃣ Cajas por Sabor")
-    st.write("Ruta: **Tableros → Principal → Informe de bajas de cajas**")
-    st.write(
-        "1. Verificar el filtro de fechas.  \n"
-        "2. Ubicar el cuadro **Cajas por Sabor**.  \n"
-        "3. Abrir los tres puntos del gráfico.  \n"
-        "4. Elegir **Exportar datos**.  \n"
-        "5. Seleccionar **Datos resumidos** y formato **.xlsx**."
-    )
-    mostrar_screenshot("sabores_01_cajas_por_sabor.png", "Cajas por Sabor: exportar desde los tres puntos del gráfico.")
-    mostrar_screenshot("sabores_02_exportar_datos_resumidos.png", "Elegir Datos resumidos y formato .xlsx.")
-    mostrar_screenshot("sabores_03_guardar_xlsx.png", "Guardar como Cajas por Sabor.xlsx.")
-
-    st.markdown("---")
-
-    st.markdown("### 3️⃣ Mix de Ventas")
-    st.write("Ruta: **Tableros → Principal → Mix de Ventas**")
-    st.warning(
-        "Antes de exportar, desplegá los grupos con el símbolo '+'. "
-        "Si no los abrís, los productos no aparecen en el Excel y el pedido puede quedar incompleto."
-    )
-    st.write("Grupos a abrir en **Heladería → Impulsivos**:")
-    st.write("- Bombones  \n- Palitos  \n- Familiar  \n- Tentación  \n- Postres")
-    st.write("Grupos a abrir en **Congelados**:")
-    st.write("- Congelados Multimarca  \n- Frizzio")
-    st.write(
-        "Exportación correcta:  \n"
-        "1. Abrir los grupos necesarios.  \n"
-        "2. Presionar **Exportar datos**.  \n"
-        "3. Elegir **Datos con diseño actual**.  \n"
-        "4. Guardar como **.xlsx**."
-    )
-    mostrar_screenshot("mix_01_grupos_desplegados.png", "Mix de Ventas: grupos desplegados antes de exportar.")
-    mostrar_screenshot("mix_02_exportar_disenio_actual.png", "Elegir Datos con diseño actual y formato .xlsx.")
-    mostrar_screenshot("mix_03_guardar_data.png", "Guardar como data.xlsx.")
-
-    st.markdown("---")
-
-    st.markdown("### Alertas del sistema")
-    st.write(
-        "🔴 **Stock negativo:** revisar inventario o descargas.  \n"
-        "🟠 **Productos sin clasificar:** falta agregarlos al Maestro.  \n"
-        "🟡 **Posibles faltantes:** producto sin ventas y con stock bajo."
-    )
 
 
 st.header("Generar pedido")
@@ -511,6 +501,17 @@ with tempfile.TemporaryDirectory() as tmp_dir:
             v1, v2 = st.columns(2)
             v1.metric("Valor stock actual", formato_moneda_ar(valor_stock_total))
             v2.metric("Valor pedido sugerido", formato_moneda_ar(valor_pedido_total))
+
+            valorizacion_categoria = result.get("valorizacion_categoria")
+            valorizacion_producto = result.get("valorizacion_producto")
+
+            if valorizacion_categoria is not None:
+                with st.expander("Ver valorización por categoría", expanded=False):
+                    st.dataframe(valorizacion_categoria, use_container_width=True)
+
+            if valorizacion_producto is not None:
+                with st.expander("Ver valorización por producto", expanded=False):
+                    st.dataframe(valorizacion_producto, use_container_width=True)
 
             if stock_negativo is not None and len(stock_negativo) > 0:
                 st.error(

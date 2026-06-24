@@ -128,3 +128,20 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Corrige el error NameError de Mark XIII.
 - Mantiene el selector de modo Usuario/Administrador.
 - Corrige valorización dividiendo los precios del Modelo de Carrito por 100.
+
+
+## Cambios Mark XVI / v1.6-beta
+
+- Valorización visible por categoría/grupo.
+- Valorización visible por producto.
+- Nuevas hojas en Excel:
+  - `Valorización categoría`
+  - `Valorización producto`
+- Se mantiene total de stock actual y total del pedido sugerido.
+
+
+## Cambios Mark XVII / v1.7-beta
+
+- Administrador permite descargar y subir carrito/precios.
+- Validación: código en columna B y precio en columna I.
+- Se mantiene carga/validación del Maestro.

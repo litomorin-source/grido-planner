@@ -6,6 +6,7 @@ import streamlit as st
 
 from motor import (
     procesar_archivos,
+    procesar_costo_stock,
     validar_stock,
     validar_sabores,
     validar_data,
@@ -17,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-APP_VERSION = "Mark XVIII (v1.7-beta)"
+APP_VERSION = "Mark XVIIII (v1.8-beta)"
 ADMIN_PIN = "2468"  # Cambiar este PIN si querés otro.
 
 APP_DIR = Path(__file__).resolve().parent
@@ -457,6 +458,49 @@ with tempfile.TemporaryDirectory() as tmp_dir:
         st.info("📄 Power BI: pendiente")
 
     st.markdown("---")
+
+    if "stock" in paths:
+        st.subheader("Informe costo stock")
+        st.caption("Este informe usa solo el archivo de stock, el maestro y el carrito/precios. No requiere ventas.")
+        if st.button("GENERAR INFORME COSTO STOCK", use_container_width=True):
+            output_stock = tmp / "Informe_Costo_Stock.xlsx"
+            try:
+                result_stock = procesar_costo_stock(
+                    stock_file=paths["stock"],
+                    maestro_file=DEFAULT_MAESTRO,
+                    output_file=output_stock,
+                )
+
+                st.success("Informe de costo de stock generado correctamente.")
+                st.metric("Valor stock actual", formato_moneda_ar(result_stock.get("valor_stock_total", 0)))
+
+                categoria_stock = result_stock.get("categoria")
+                detalle_stock = result_stock.get("detalle")
+                stock_negativo_informe = result_stock.get("stock_negativo")
+
+                if categoria_stock is not None:
+                    with st.expander("Ver valorización por categoría", expanded=False):
+                        st.dataframe(categoria_stock, use_container_width=True)
+
+                if detalle_stock is not None:
+                    with st.expander("Ver valorización por producto", expanded=False):
+                        st.dataframe(detalle_stock, use_container_width=True)
+
+                if stock_negativo_informe is not None and len(stock_negativo_informe) > 0:
+                    with st.expander("Ver stock negativo", expanded=True):
+                        st.error("Hay productos con stock negativo. Revisar inventario o descarga.")
+                        st.dataframe(stock_negativo_informe, use_container_width=True)
+
+                st.download_button(
+                    "DESCARGAR INFORME COSTO STOCK",
+                    data=output_stock.read_bytes(),
+                    file_name="Informe_Costo_Stock.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error("Ocurrió un error al generar el informe de costo stock.")
+                st.exception(e)
 
     if not ready:
         st.info("Cuando los 3 archivos estén en OK, se habilita la generación del pedido.")

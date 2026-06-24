@@ -467,6 +467,124 @@ def format_workbook(path):
     wb.save(path)
 
 
+
+def procesar_costo_stock(stock_file, maestro_file, output_file):
+    """
+    Genera un informe de valorización de stock usando solo:
+    - archivo stock
+    - maestro
+    - archivo de carrito/precios
+    """
+    config = load_config(maestro_file)
+    productos = load_productos(maestro_file)
+    aliases = load_aliases(maestro_file)
+    exclusiones = load_exclusiones(maestro_file)
+    precios_carrito = load_precios_carrito()
+
+    productos_validos = productos[(productos["Activo"]) & (~productos["Excluir"])].copy()
+    productos_map = productos_validos.set_index("Producto Base").to_dict(orient="index")
+
+    alias_map = {}
+    for _, r in aliases.iterrows():
+        alias_map[r["Alias Normalizado"]] = {
+            "Producto Base": r["Producto Base"],
+            "Tipo Presentación": r.get("Tipo Presentación", ""),
+            "Pack Detectado": r.get("Pack Detectado", np.nan),
+            "Regla Conversión": r.get("Regla Conversión", ""),
+            "Alias Encontrado": True,
+        }
+
+    stock_rows = read_stock(stock_file, config, alias_map, productos_map, exclusiones)
+
+    stock_grouped = stock_rows.groupby(["Grupo", "SubRubro", "Producto Base"], as_index=False).agg({
+        "Cantidad Eq": "sum",
+        "Nombre original": lambda x: " + ".join(sorted(set(x.astype(str))))
+    }).rename(columns={
+        "Cantidad Eq": "Stock",
+        "Nombre original": "Productos agrupados"
+    })
+
+    final = stock_grouped.merge(productos_validos, on="Producto Base", how="left")
+
+    final["Compra Mínima"] = pd.to_numeric(final["Compra Mínima"], errors="coerce").fillna(1)
+    final["Código Compra Normalizado"] = final["Código Compra"].apply(normalizar_codigo_compra)
+    final["Precio Pack"] = final["Código Compra Normalizado"].map(precios_carrito).fillna(0).astype(int)
+
+    final["Costo Unitario Eq"] = final.apply(
+        lambda r: r["Precio Pack"] / r["Compra Mínima"] if r["Compra Mínima"] else 0,
+        axis=1
+    )
+    final["Valor Stock Actual"] = (final["Stock"] * final["Costo Unitario Eq"]).fillna(0).astype(int)
+
+    detalle = final[[
+        "Grupo",
+        "SubRubro",
+        "Producto Base",
+        "Stock",
+        "Compra Mínima",
+        "Precio Pack",
+        "Costo Unitario Eq",
+        "Valor Stock Actual",
+        "Código Compra",
+        "Producto Compra",
+        "Productos agrupados",
+    ]].copy().rename(columns={
+        "Producto Base": "Producto"
+    }).sort_values("Valor Stock Actual", ascending=False)
+
+    categoria = (
+        detalle.groupby("Grupo", as_index=False)
+        .agg({
+            "Stock": "sum",
+            "Valor Stock Actual": "sum",
+        })
+        .sort_values("Valor Stock Actual", ascending=False)
+    )
+
+    stock_negativo = detalle[pd.to_numeric(detalle["Stock"], errors="coerce").fillna(0) < 0].copy()
+
+    resumen = pd.DataFrame({
+        "Concepto": [
+            "Valor stock actual",
+            "Productos valorizados",
+            "Productos con stock negativo",
+        ],
+        "Valor": [
+            int(detalle["Valor Stock Actual"].sum()),
+            len(detalle),
+            len(stock_negativo),
+        ]
+    })
+
+    explicacion = pd.DataFrame({
+        "Explicación": [
+            "INFORME COSTO STOCK",
+            "Este informe valoriza el stock actual sin requerir archivos de ventas.",
+            "Usa el archivo de stock, el maestro de productos y el archivo de carrito/precios.",
+            "Precio pack se toma del carrito/precios por código de compra.",
+            "Valor stock actual = Stock × (Precio pack / Compra mínima).",
+            "Si hay productos con stock negativo, deben revisarse porque pueden afectar la valorización.",
+        ]
+    })
+
+    with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
+        resumen.to_excel(writer, index=False, sheet_name="Resumen")
+        categoria.to_excel(writer, index=False, sheet_name="Valorización categoría")
+        detalle.to_excel(writer, index=False, sheet_name="Valorización producto")
+        stock_negativo.to_excel(writer, index=False, sheet_name="Stock negativo")
+        explicacion.to_excel(writer, index=False, sheet_name="Explicación")
+
+    format_workbook(output_file)
+
+    return {
+        "detalle": detalle,
+        "categoria": categoria,
+        "stock_negativo": stock_negativo,
+        "valor_stock_total": int(detalle["Valor Stock Actual"].sum()),
+        "output_file": output_file,
+    }
+
+
 def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_file, overrides=None):
     config = load_config(maestro_file, overrides=overrides)
     productos = load_productos(maestro_file)

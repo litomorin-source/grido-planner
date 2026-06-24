@@ -145,3 +145,17 @@ Por ahora permite descargar el maestro actual. En una próxima versión se agreg
 - Administrador permite descargar y subir carrito/precios.
 - Validación: código en columna B y precio en columna I.
 - Se mantiene carga/validación del Maestro.
+
+
+## Cambios Mark XVIII / v1.8-beta
+
+- Nuevo botón `GENERAR INFORME COSTO STOCK`.
+- Se habilita apenas el archivo de stock está cargado correctamente.
+- No requiere Cajas por Sabor ni Mix de Ventas.
+- Genera `Informe_Costo_Stock.xlsx` con:
+  - Resumen
+  - Valorización categoría
+  - Valorización producto
+  - Stock negativo
+  - Explicación
+- El botón `GENERAR PEDIDO` queda igual y sigue requiriendo los 3 archivos.

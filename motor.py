@@ -351,7 +351,7 @@ def read_stock(stock_file, config, alias_map, productos_map, exclusiones):
     incluir_congelados = truthy(config.get("Incluir congelados", "Sí"))
     mask = ((stock["Rubro"] == "Heladería") & (stock["SubRubro"].isin(["Sabores", "Impulsivos"])))
     if incluir_congelados:
-        mask = mask | ((stock["Rubro"] == "Congelados") & (stock["Grupo"].isin(["Congelados", "Frizzio"])))
+        mask = mask | ((stock["Rubro"] == "Congelados") & (stock["Grupo"].isin(["Congelados", "Congelados Multimarca", "Frizzio"])))
 
     stock = stock[mask].copy()
     if "Grupo" in stock.columns:
@@ -617,7 +617,11 @@ def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_
     ventas_all = pd.concat([sabores_rows, data_rows], ignore_index=True)
     ventas_grouped = ventas_all.groupby("Producto Base", as_index=False)["Cantidad Eq"].sum().rename(columns={"Cantidad Eq": "Ventas período"})
 
-    final = stock_grouped.merge(ventas_grouped, on="Producto Base", how="left")
+    final = stock_grouped.merge(ventas_grouped, on="Producto Base", how="outer")
+    final["Stock"] = final["Stock"].fillna(0)
+    final["Grupo"] = final["Grupo"].fillna("")
+    final["SubRubro"] = final["SubRubro"].fillna("")
+    final["Productos agrupados"] = final["Productos agrupados"].fillna("Sin stock en archivo")
     final["Ventas período"] = final["Ventas período"].fillna(0)
 
     dias_analizados = safe_num(config.get("Días analizados", 14), 14)

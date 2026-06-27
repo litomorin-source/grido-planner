@@ -468,7 +468,7 @@ def format_workbook(path):
 
 
 
-def procesar_costo_stock(stock_file, maestro_file, output_file):
+def procesar_costo_stock(stock_file, maestro_file, output_file, carrito_file=DEFAULT_CARRITO_FILE):
     """
     Genera un informe de valorización de stock usando solo:
     - archivo stock
@@ -479,7 +479,7 @@ def procesar_costo_stock(stock_file, maestro_file, output_file):
     productos = load_productos(maestro_file)
     aliases = load_aliases(maestro_file)
     exclusiones = load_exclusiones(maestro_file)
-    precios_carrito = load_precios_carrito()
+    precios_carrito = load_precios_carrito(carrito_file)
 
     productos_validos = productos[(productos["Activo"]) & (~productos["Excluir"])].copy()
     productos_map = productos_validos.set_index("Producto Base").to_dict(orient="index")
@@ -585,12 +585,12 @@ def procesar_costo_stock(stock_file, maestro_file, output_file):
     }
 
 
-def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_file, overrides=None):
+def procesar_archivos(stock_file, sabores_file, data_file, maestro_file, output_file, overrides=None, carrito_file=DEFAULT_CARRITO_FILE):
     config = load_config(maestro_file, overrides=overrides)
     productos = load_productos(maestro_file)
     aliases = load_aliases(maestro_file)
     exclusiones = load_exclusiones(maestro_file)
-    precios_carrito = load_precios_carrito()
+    precios_carrito = load_precios_carrito(carrito_file)
 
     productos_validos = productos[(productos["Activo"]) & (~productos["Excluir"])].copy()
     productos_map = productos_validos.set_index("Producto Base").to_dict(orient="index")

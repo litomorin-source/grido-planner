@@ -1,13 +1,11 @@
-# GridoPlanner Labs 2.3.7
+# GridoPlanner Stable 2.4.0
 
-Hotfix sobre Labs 2.3.6.
+Migración completa desde la versión probada de GridoPlanner Labs (respaldo del 05/11/2026), fusionada con producción.
 
-Corrección:
-- Soluciona `StreamlitDuplicateElementId` en el simulador.
-- El botón `SIMULAR ESCENARIOS` ahora tiene key única por instancia.
-- Se revisan los botones del simulador para evitar colisiones de IDs.
+Incluye motor de pedidos, informes, costos según Mix de Ventas, importación de Carrito, gráficos, descarga persistente y omisiones de futuros pedidos.
 
-No cambia:
-- lógica del motor;
-- cálculo de pedidos;
-- compatibilidad con Mix viejo/nuevo P1-P2.
+**Datos:** Maestro y Carrito vigentes de Labs; historial de stock fusionado por ID sin descartar registros distintos; lista de omisiones de Labs; archivos auxiliares originales de producción conservados.
+
+**Instalación:** extraer ZIP y subir el contenido del directorio al raíz del repositorio `grido-planner`, manteniendo subcarpetas (`ui/`, `core/`, `data/`, etc.). No subir el ZIP como un único archivo. No sobrescribir los secretos configurados en Streamlit Cloud.
+
+**Verificar luego de subir:** acceso, maestro/carrito, cálculos, omisiones, historial, Excel Pedido Final y Carrito importable. No se efectuó prueba de la app en Streamlit Cloud.
